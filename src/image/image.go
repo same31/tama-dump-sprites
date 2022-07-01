@@ -107,8 +107,12 @@ func (img *Image) DecodeImage() error {
 		}
 	} else {
 		for i, b := range bytes {
-			var idx = i * 4
+			if int(b) > len(palette)-1 {
+				return errors.New("cannot decode this image")
+			}
+
 			var p1 = palette[b]
+			var idx = i * 4
 			for i, p := range p1 {
 				pixels[idx+i] = p
 			}
