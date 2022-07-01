@@ -136,7 +136,7 @@ func (img *Image) DrawImage(path string, rawAlpha bool) error {
 				b = img.Pixels[c+2]
 				a = img.Pixels[c+3]
 
-				if !rawAlpha && r == 0 && g == 255 && a == 255 {
+				if !rawAlpha && r == 0 && g == 255 && b == 0 && a == 255 {
 					a = 0
 				}
 			}
