@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
@@ -23,16 +24,24 @@ var rootCmd = &cobra.Command{
 
 var dumpPath, outputPath *string
 var rawAlpha *bool
+var filenameAddress *bool
 var bytes []byte
 
 func Execute() {
 	dumpPath = rootCmd.Flags().StringP("input", "i", "", "path to dump file")
 	outputPath = rootCmd.Flags().StringP("output", "o", ".", "output path")
 	rawAlpha = rootCmd.Flags().BoolP("raw-alpha", "r", false, "raw green colour instead of transparency")
+	filenameAddress = rootCmd.Flags().BoolP("address", "a", false, "output files contain address of image in file")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalln(err)
 	}
+}
+
+type Sprite struct {
+	Address int
+	Size    int
+	Img     *image.Image
 }
 
 func ExtractSprites() error {
@@ -58,17 +67,21 @@ func ExtractSprites() error {
 		return err
 	}
 
-	sprites := make([]*image.Image, 0)
+	sprites := make([]Sprite, 0)
 	for i, idx := 0, 0; i < len(bytes); i++ {
 		img := scanImage(idx)
 		if img != nil {
-			idx += img.Size
-
 			img.DecodePalette()
 			err = img.DecodeImage()
 			if err == nil {
-				sprites = append(sprites, img)
+				sprite := Sprite{
+					Address: idx,
+					Img:     img,
+				}
+				sprites = append(sprites, sprite)
 			}
+
+			idx += img.Size
 		} else {
 			idx++
 		}
@@ -81,12 +94,17 @@ func ExtractSprites() error {
 	}
 
 	for i, s := range sprites {
-		idx := strconv.Itoa(i)
-		var filename = pads[len(idx):] + idx + ".png"
+		var prefix = strconv.Itoa(i)
+		prefix = pads[len(prefix):] + prefix
+		if *filenameAddress {
+			prefix += fmt.Sprintf("_0x%x-0x%x", s.Address, s.Address+s.Img.Size-1)
+		}
+
+		var filename = prefix + ".png"
 
 		path := *outputPath + string(os.PathSeparator) + filename
 		log.Println(path)
-		if err := s.DrawImage(path, *rawAlpha); err != nil {
+		if err := s.Img.DrawImage(path, *rawAlpha); err != nil {
 			return err
 		}
 	}
